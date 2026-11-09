@@ -9,14 +9,17 @@ import "sort"
 // compared pointers instead of ids.
 //
 // The bracket STRUCTURE (next_match_id / loser_next_match_id links) was never
-// corrupted — only the participant slots. So we can re-derive every match's
-// participants from its feeders' recorded outcomes, processing matches in
-// topological (round-ascending) order:
+// corrupted — only the participant slots (and, in team mode, the Team1/Team2
+// stand-ins derived from them, which is why a match could spawn "Blue Wolves vs
+// Blue Wolves" in-game even though its two participants were distinct). So we
+// re-derive every match's participants from its feeders' recorded outcomes,
+// processing matches in topological (round-ascending) order:
 //
 //   - A source match (no feeders) keeps its seed-list participants.
 //   - Any other match's participants are re-derived from its feeders: a feeder
 //     whose next_match_id points here contributes its Winner; a feeder whose
-//     loser_next_match_id points here contributes its Loser.
+//     loser_next_match_id points here contributes its Loser. The match's
+//     Team1/Team2 are then re-attached from the corrected participant ids.
 //   - If the re-derived set EQUALS the current set (the corruption was only a
 //     cosmetic duplicate, e.g. a bye rendered as "SE vs SE"), we fix the slots
 //     and KEEP the recorded result.
