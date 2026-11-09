@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	rlbot "github.com/RLBot/go-interface"
@@ -30,6 +31,19 @@ type App struct {
 	rlbotAddress      string
 	sandbox           *SandboxState
 	sandboxMu         sync.Mutex
+
+	// Tournament state (ported from the v4 fork's tournament_runner.py). The
+	// current tournament is held server-side and persisted to disk, mirroring
+	// v4's QSettings("rlbotgui", "tournament_save") behavior.
+	tournament    *TournamentState
+	tournamentMu  sync.Mutex
+	tournamentDir string
+
+	// tournamentMatchStopped is set by TournamentStopMatch to abort the blocking
+	// capture loop in captureMatchResult (v4 parity: v4's stop_match set a flag the
+	// poll loop checked). When true, the running capture returns a Stopped result
+	// that skips recording, so the operator can re-start the match.
+	tournamentMatchStopped atomic.Bool
 }
 
 func (a *App) IgnoreMe(
@@ -119,6 +133,7 @@ func NewApp() *App {
 		app:               nil,
 		latestReleaseJson: latest_release_json,
 		rlbotAddress:      rlbot_address,
+		tournamentDir:     filepath.Join(os.Getenv("LOCALAPPDATA"), "RLBot5", "tournaments"),
 	}
 }
 
