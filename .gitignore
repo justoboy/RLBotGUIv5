@@ -3,3 +3,7 @@ bin
 build/**/*.ico
 build/**/*.icns
 *.syso
+
+# Local build artifacts / IDE (do not commit)
+gui.exe
+.idea/

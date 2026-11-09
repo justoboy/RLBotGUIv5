@@ -36,7 +36,10 @@ tasks:
       BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui"{{end}}'
     env:
       GOOS: windows
-      CC: x86_64-w64-mingw32-gcc
+      # Use plain `gcc` (mingw-w64) which the setup/run scripts put on PATH. The previous value
+      # (x86_64-w64-mingw32-gcc) is a wrapper that is not on PATH on this machine, and the OS-level
+      # CC=cl.exe (MSVC) breaks cgo (spaced path + rejects gcc flags). See run_gui.bat / setup_gui.bat.
+      CC: gcc
       CGO_ENABLED: '1'
       GOARCH: '{{.ARCH | default ARCH}}'
 
