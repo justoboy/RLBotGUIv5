@@ -9,6 +9,7 @@ import Home from "./pages/Home.svelte";
 import RocketHost from "./pages/RocketHost.svelte";
 import StateSettingSandbox from "./pages/StateSettingSandbox.svelte";
 import StoryMode from "./pages/StoryMode.svelte";
+import Tournament from "./pages/Tournament.svelte";
 import Welcome from "./pages/Welcome.svelte";
 import { parseJSON } from "./index";
 import arenaImages from "./arena-images";
@@ -82,6 +83,9 @@ let paths: {
       {#if activePage == "storymode"}
         <h3>&nbsp; / Story Mode</h3>
       {/if}
+      {#if activePage == "tournament"}
+        <h3>&nbsp; / Tournament</h3>
+      {/if}
     </div>
     <div class="navbuttons">
       <button id={eventsNow > 0 || eventsFuture > 0 ? "events" : ""} onclick={() => eventsVisible = true}>
@@ -103,6 +107,11 @@ let paths: {
         activePage = "storymode";
       }}
         >Story Mode</button
+      >
+      <button
+        onclick={() => {
+          activePage = "tournament";
+        }}>Tournament</button
       >
       <button
         onclick={() => {
@@ -157,6 +166,12 @@ let paths: {
     class={"pageContainer" + (activePage == "storymode" ? "" : " hidden")}
   >
     <StoryMode />
+  </div>
+
+  <div
+    class={"pageContainer" + (activePage == "tournament" ? "" : " hidden")}
+  >
+    <Tournament />
   </div>
 
   <div
