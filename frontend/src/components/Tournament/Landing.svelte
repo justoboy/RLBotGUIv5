@@ -87,8 +87,18 @@ function pickJSON(): Promise<string | null> {
 async function importTournament() {
   const text = await pickJSON();
   if (text == null) return;
+  // Let the user rename on import so it doesn't collide with an existing entry
+  // in the saved list (the imported tournament always gets a fresh id).
+  let name = "";
   try {
-    const state = await App.TournamentImportJSON(text);
+    const parsed = JSON.parse(text);
+    name = prompt("Tournament name:", parsed?.name || "");
+  } catch {
+    name = prompt("Tournament name:", "");
+  }
+  if (name === null) return; // user cancelled
+  try {
+    const state = await App.TournamentImportJSON(text, name);
     onOpen(state);
     toast.success("Tournament imported");
   } catch (e) {

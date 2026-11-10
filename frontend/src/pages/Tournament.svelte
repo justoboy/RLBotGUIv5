@@ -112,7 +112,17 @@ function importJSON() {
     if (!file) return;
     try {
       const text = await file.text();
-      const s = await App.TournamentImportJSON(text);
+      // Let the user rename on import so it doesn't collide with an existing
+      // entry in the saved list (the imported tournament always gets a fresh id).
+      let name = "";
+      try {
+        const parsed = JSON.parse(text);
+        name = prompt("Tournament name:", parsed?.name || "");
+      } catch {
+        name = prompt("Tournament name:", "");
+      }
+      if (name === null) return; // user cancelled
+      const s = await App.TournamentImportJSON(text, name);
       state = s;
       view = "bracket";
       await refreshDerived();

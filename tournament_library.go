@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -67,8 +68,8 @@ func (a *App) TournamentSaveToLibrary() error {
 	return a.saveToLibraryLocked()
 }
 
-// saveToLibraryLocked writes the current tournament to saved/<id>.json. Caller
-// holds the lock.
+// saveToLibraryLocked writes the current tournament to saved/<id>.json (slim
+// wire format). Caller holds the lock.
 func (a *App) saveToLibraryLocked() error {
 	if a.tournament == nil {
 		return errorf("no tournament loaded")
@@ -76,7 +77,7 @@ func (a *App) saveToLibraryLocked() error {
 	if err := os.MkdirAll(a.savedDir(), 0o755); err != nil {
 		return err
 	}
-	data, err := json.Marshal(a.tournament)
+	data, err := encodeTournamentState(a.tournament)
 	if err != nil {
 		return err
 	}
@@ -102,8 +103,8 @@ func (a *App) TournamentListSaved() ([]TournamentSummary, error) {
 		if err != nil {
 			continue
 		}
-		var s TournamentState
-		if err := json.Unmarshal(data, &s); err != nil {
+		s, err := decodeTournamentState(data)
+		if err != nil {
 			continue
 		}
 		winner := ""
@@ -138,12 +139,12 @@ func (a *App) TournamentLoadFromID(tournamentID string) (*TournamentState, error
 	if err != nil {
 		return nil, err
 	}
-	var state TournamentState
-	if err := json.Unmarshal(data, &state); err != nil {
+	state, err := decodeTournamentState(data)
+	if err != nil {
 		return nil, err
 	}
-	a.tournament = &state
-	return &state, nil
+	a.tournament = state
+	return state, nil
 }
 
 // TournamentDeleteFromList removes a tournament from the saved library. If it is
@@ -275,31 +276,43 @@ func (a *App) TournamentDeleteTemplate(templateID string) error {
 }
 
 // TournamentExportJSON returns the current tournament as a pretty JSON string
-// for file export.
+// for file export (slim wire format, same as on-disk saves).
 func (a *App) TournamentExportJSON() (string, error) {
 	a.tournamentMu.Lock()
 	defer a.tournamentMu.Unlock()
 	if a.tournament == nil {
 		return "", errorf("no tournament loaded")
 	}
-	data, err := json.MarshalIndent(a.tournament, "", "  ")
+	sv := a.tournament.toSaved()
+	data, err := json.MarshalIndent(sv, "", "  ")
 	if err != nil {
 		return "", err
 	}
 	return string(data), nil
 }
 
-// TournamentImportJSON loads a tournament from a JSON string (file import).
-func (a *App) TournamentImportJSON(tournamentJSON string) (*TournamentState, error) {
+// TournamentImportJSON loads a tournament from a JSON string (file import). The
+// imported tournament always gets a FRESH id so it can never overwrite an
+// existing saved tournament, and an optional newName (when non-empty) renames it
+// so it doesn't collide with an existing entry in the landing-page list.
+func (a *App) TournamentImportJSON(tournamentJSON string, newName string) (*TournamentState, error) {
 	a.tournamentMu.Lock()
 	defer a.tournamentMu.Unlock()
-	var state TournamentState
-	if err := json.Unmarshal([]byte(tournamentJSON), &state); err != nil {
+	state, err := decodeTournamentState([]byte(tournamentJSON))
+	if err != nil {
 		return nil, errorf("failed to import tournament: %w", err)
 	}
-	a.tournament = &state
+	// Always assign a fresh id: importing must never overwrite an existing
+	// saved tournament (the library is keyed by id).
+	state.TournamentID = newID()
+	if name := strings.TrimSpace(newName); name != "" {
+		state.Name = name
+	}
+	a.tournament = state
 	a.persistLocked()
-	return &state, nil
+	// Register in the library so it shows on the landing page under its (new) id.
+	_ = a.saveToLibraryLocked()
+	return state, nil
 }
 
 // TournamentImportTemplateJSON loads a template from a JSON string and adds it to

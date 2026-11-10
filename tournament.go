@@ -10,7 +10,6 @@ package main
 // QSettings("rlbotgui", "tournament_save") behavior.
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,31 +18,31 @@ import (
 
 // TournamentConfig is the creation-time configuration for a new tournament.
 type TournamentConfig struct {
-	Name           string                      `json:"name"`
-	Format         string                      `json:"format"` // single_elimination, double_elimination, round_robin, swiss
-	Participants   []TournamentParticipantInput `json:"participants"`
-	TeamSize       int                `json:"teamSize"`
-	AllowDuplicates bool              `json:"allowDuplicates"`
-	SwissRounds    int                `json:"swissRounds"` // 0 = auto ceil(log2(entities))
-	Map            string             `json:"map"`
-	GameMode       string             `json:"gameMode"`
-	RandomizeMap   bool               `json:"randomizeMap"`
-	Scripts        []BotInfo          `json:"scripts"`
-	MercyRule      int                `json:"mercyRule"`
-	Mutators       flatMutator        `json:"mutators"`
-	ExtraOptions   ExtraOptions       `json:"extraOptions"`
-	Launcher       string             `json:"launcher"`
-	LauncherArg    string             `json:"launcherArg"`
+	Name            string                       `json:"name"`
+	Format          string                       `json:"format"` // single_elimination, double_elimination, round_robin, swiss
+	Participants    []TournamentParticipantInput `json:"participants"`
+	TeamSize        int                          `json:"teamSize"`
+	AllowDuplicates bool                         `json:"allowDuplicates"`
+	SwissRounds     int                          `json:"swissRounds"` // 0 = auto ceil(log2(entities))
+	Map             string                       `json:"map"`
+	GameMode        string                       `json:"gameMode"`
+	RandomizeMap    bool                         `json:"randomizeMap"`
+	Scripts         []BotInfo                    `json:"scripts"`
+	MercyRule       int                          `json:"mercyRule"`
+	Mutators        flatMutator                  `json:"mutators"`
+	ExtraOptions    ExtraOptions                 `json:"extraOptions"`
+	Launcher        string                       `json:"launcher"`
+	LauncherArg     string                       `json:"launcherArg"`
 }
 
 // TournamentParticipantInput is the frontend-facing participant payload. The
 // Player field carries the underlying v5 player config (BotInfo/Psyonix/Human).
 type TournamentParticipantInput struct {
-	Name            string   `json:"name"`
-	ParticipantID   string   `json:"participantId"`
-	ParticipantType string   `json:"participantType"` // "bot", "human"
+	Name            string    `json:"name"`
+	ParticipantID   string    `json:"participantId"`
+	ParticipantType string    `json:"participantType"` // "bot", "human"
 	Player          *PlayerJs `json:"player"`
-	Seed            int      `json:"seed"`
+	Seed            int       `json:"seed"`
 }
 
 // toParticipant converts a frontend participant payload into the internal type,
@@ -514,16 +513,16 @@ func (a *App) regenerateBracketLocked() {
 
 // --- persistence ---
 
-// persistLocked writes the current tournament to disk. Caller holds the lock.
-// If the tournament is already in the saved library, its library entry is updated
-// too, so match progress survives a restart (mirrors v4's auto-sync into the
-// saved-tournaments list).
+// persistLocked writes the current tournament to disk (slim wire format). Caller
+// holds the lock. If the tournament is already in the saved library, its library
+// entry is updated too, so match progress survives a restart (mirrors v4's
+// auto-sync into the saved-tournaments list).
 func (a *App) persistLocked() {
 	if a.tournament == nil {
 		return
 	}
 	_ = os.MkdirAll(a.tournamentDir, 0o755)
-	data, err := json.Marshal(a.tournament)
+	data, err := encodeTournamentState(a.tournament)
 	if err != nil {
 		return
 	}
@@ -544,10 +543,10 @@ func (a *App) TournamentLoad() (*TournamentState, error) {
 	if err != nil {
 		return nil, err
 	}
-	var state TournamentState
-	if err := json.Unmarshal(data, &state); err != nil {
+	state, err := decodeTournamentState(data)
+	if err != nil {
 		return nil, err
 	}
-	a.tournament = &state
-	return &state, nil
+	a.tournament = state
+	return state, nil
 }
